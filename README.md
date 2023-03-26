@@ -1,5 +1,5 @@
-# kylobot - an OP Stack ChatBot
-The original Kylobot project -  Integrating  OpenAI and Pinecone indexes for long term memory
+# kylobot - an OP Stack ChatBot with long-term memory. 
+The original Kylobot project -  Integrating  OpenAI and Pinecone indexes for long-term memory
 
 ## API keys & .env
 You need to create a .env, or add the environment cariables as below. 
