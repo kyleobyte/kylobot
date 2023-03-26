@@ -1,4 +1,4 @@
-# kylobot
+# kylobot - an OP Stack ChatBot
 The original Kylobot project -  Integrating  OpenAI and Pinecone indexes for long term memory
 
 ## API keys & .env
