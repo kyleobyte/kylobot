@@ -52,7 +52,7 @@ def handle_message(input_text):
 
     # Query Pinecone index for relevant conversation history
     query_vector = input_embedding
-    num_results = 30
+    num_results = 50
     pinecone_results = index.query(
         query_vector,
         top_k=num_results,
@@ -67,10 +67,10 @@ def handle_message(input_text):
     message_history = [{'role': match['metadata']['role'],
                         'content': match['metadata']['content']} for match in matches]
 
-    # Concatenate the messages and get GPT-3's response
+    # Concatenate the messages and get GPT's response
     messages = system_line + message_history + user_line
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo", messages=messages)
+        model="gpt-4", messages=messages)
     assistant_response = response['choices'][0]['message']['content']
 
     # Upsert user and assistant data
