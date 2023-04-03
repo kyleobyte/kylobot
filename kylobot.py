@@ -2,6 +2,7 @@ import openai
 import pinecone
 import os
 import uuid
+import time
 import numpy as np
 from dotenv import load_dotenv
 
@@ -42,42 +43,47 @@ def upsert_data(uuid_str, role, content, namespace, embedding):
 
 
 def handle_message(input_text):
-    # Move the index definition inside the function
     index = pinecone.Index("kylo-bot-memory")
     input_name = "User"
-    # Get embedding for user input and create a uuid
+
     input_embedding = get_embedding(input_text)
     input_uuid = uuid.uuid4()
-    assistant_uuid = uuid.uuid4()
 
-    # Query Pinecone index for relevant conversation history
     query_vector = input_embedding
-    num_results = 50
-    pinecone_results = index.query(
-        query_vector,
-        top_k=num_results,
-        namespace=pinecone_namespace,
-        include_metadata=True)
+    num_results = 20
+    namespace = pinecone_namespace
+    pinecone_results = index.query(query_vector, top_k=num_results, namespace=namespace, include_metadata=True)
 
-    # Prepare message history for GPT-3
+    chat_model = "gpt-3.5-turbo"
+
     system_line = [{'role': 'system', 'content': system_input}]
     user_line = [{'role': 'user', 'content': input_text}]
-    matches = pinecone_results['matches']
-    matches.reverse()
-    message_history = [{'role': match['metadata']['role'],
-                        'content': match['metadata']['content']} for match in matches]
 
-    # Concatenate the messages and get GPT's response
-    messages = system_line + message_history + user_line
-    response = openai.ChatCompletion.create(
-        model="gpt-4", messages=messages)
+    matches = pinecone_results['matches']
+    send_to_gpt = []
+
+    # Set similarity score threshold and time-based factor
+    score_threshold = 0.8
+    time_based_factor = 0.01
+
+    # Filter matches based on the similarity score threshold and sort them by their weighted scores
+    filtered_matches = [match for match in matches if match['score'] >= score_threshold]
+    current_time = time.time()
+
+    for match in filtered_matches:
+        match['weighted_score'] = match['score'] * (1 + time_based_factor * (current_time - uuid.UUID(match['metadata']['chatUUID']).time_low))
+    sorted_matches = sorted(filtered_matches, key=lambda x: x['weighted_score'], reverse=True)
+
+    for match in sorted_matches:
+        send_to_gpt.append({'role': match['metadata']['role'], 'content': match['metadata']['content']})
+
+    messages = system_line + send_to_gpt[-num_results:] + user_line
+
+    response = openai.ChatCompletion.create(model=chat_model, messages=messages)
     assistant_response = response['choices'][0]['message']['content']
 
-    # Upsert user and assistant data
-    upsert_data(str(input_uuid), "user", input_text,
-                pinecone_namespace, input_embedding)
+    upsert_conversation_data(input_uuid, input_embedding, input_text, input_name, input_role="user")
     assistant_embedding = get_embedding(assistant_response)
-    upsert_data(str(assistant_uuid), "assistant", assistant_response,
-                pinecone_namespace, assistant_embedding)
+    upsert_conversation_data(input_uuid, assistant_embedding, assistant_response, "Kylobot", input_role="assistant")
 
     return assistant_response
