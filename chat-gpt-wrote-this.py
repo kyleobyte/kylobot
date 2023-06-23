@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 # Set up API keys
 openai.api_key = config.OPENAI_API_KEY
 pinecone.init(api_key=config.PINECONE_API_KEY, environment="us-east-1-aws")
-index = pinecone.Index("kylo-bot-memory")
+index = pinecone.Index("kylo-bot-memory-index")
 load_dotenv()
 
 TOKEN = os.getenv('DISCORD_TOKEN')
